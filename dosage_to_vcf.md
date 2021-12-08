@@ -1,0 +1,100 @@
+## Converting dosage files to vcf files
+
+### Need:
+
+- Dosage file
+
+```
+5 5:34973992:C:G 5:34973992:C:G 34973992 C G 0 1 1.97501 0.99699 0.97099 0.99899 0.978 0 0 1.99699 1 0.987 1 0.99899 1.99699 0.998 0.998 0.998 0.994 1.963 0 0.99899 0.998 0.998 0.953 0.98202 0.978 0 0 0 0 1.955 1.45398 0.974 0.979 0.966 0.822 1.88501 0.98199 1.46799 0.99699 1.86698 0.989 0.97099 0.99899 0 0 0.953 0.97301 0 0 0.998 0.957 0.998 1 1.957 0.96201 0 0.98 0 0.965 0 0 0 0.989 1 0 0.998 0.989 1 0 0 0 1 0 1 1 0 1 0.99699 0.934 0.92 0 
+...
+```
+
+
+
+- Sample file
+
+```
+ID_1 ID_2 missing
+0 0 0
+1_3226 1_3226 0
+1_8228 1_8228 0
+2_2294 2_2294 0
+2_3416 2_3416 0
+2_6790 2_6790 0
+2_6952 2_6952 0
+...
+```
+
+
+
+- VCF file name
+
+```
+xxx_unphased.vcf
+```
+
+
+
+### Use the R function
+
+```R
+library(dplyr)
+
+dosage_to_vcf = function(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
+                         sample_dir = "FHS_EA_TOPHIT_SNPs_subset.sample",
+                         vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf"){
+  
+  # Read dosage files and sample file
+  dosage = read.delim(dosage_dir, sep = " ", header = FALSE)
+  sample_info = read.delim(sample_dir, sep = " ", header = FALSE)
+  samples = paste0("SUBJECT", sample_info[,1][-(1:2)])
+  
+  # Get rid of redundant columns for the dosage file
+  dosage = dosage[,-c(2,3)]
+  names(dosage) = c("chr", "pos", "ref", "alt", samples)
+  
+  # Solidify genotype calls
+  dosage_called = dosage %>%
+    mutate_at(vars(matches("SUBJECT")), round) %>%
+    mutate_at(vars(matches("SUBJECT")), function(x){
+      ifelse(is.na(x),"./.",
+             ifelse(x==0, "0/0", ifelse(x==1, "0/1", ifelse(x==2, "1/1","./.")))
+      )
+    })
+  
+  
+  line1 = "##fileformat=VCFv4.2"
+  line2 = "##FORMAT=<ID=GT,Number=1,Type=Integer,Description=Genotype>"
+  line3 = paste("#CHROM	POS	ID	REF	ALT	QUAL	FILTER  INFO	FORMAT",
+                paste(samples, collapse = "\t"), collapse = "\t")
+  
+  line_gt = vector()
+  for(i in dim(dosage_called)[1]){
+    line_meta = paste(
+      dosage_called[i,1], # Chromosome
+      dosage_called[i,2], # Position
+      paste0("chr", dosage_called[i,1],
+             "_", dosage_called[i,2]), # ID
+      dosage_called[i,3], #Ref
+      dosage_called[i,4], # Alt
+      ".", "PASS", ".", "GT", # Quality, filter, info, and format
+      sep = "\t")
+    line_x = paste(line_meta, 
+                   paste(dosage_called[i,5:dim(dosage_called)[2]],
+                         collapse = "\t"),
+                   collapse = "\t")
+    line_gt = c(line_gt, line_x)
+  }
+  
+  writeLines(c(line1, line2, line3, line_gt),
+             con = vcf_filename,
+             sep = "\n")
+  
+}
+
+### NOT RUN
+# dosage_to_vcf(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
+#               sample_dir = "FHS_EA_TOPHIT_SNPs_subset.sample",
+#               vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf")
+```
+
