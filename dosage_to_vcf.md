@@ -39,10 +39,13 @@ xxx_unphased.vcf
 
 ```R
 library(dplyr)
+library(R.utils)
+library(vcfR)
 
 dosage_to_vcf = function(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
                          sample_dir = "FHS_EA_TOPHIT_SNPs_subset.sample",
-                         vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf"){
+                         vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf",
+                         gzip_compression = TRUE){
   
   # Read dosage files and sample file
   dosage = read.delim(dosage_dir, sep = " ", header = FALSE)
@@ -65,11 +68,11 @@ dosage_to_vcf = function(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
   
   line1 = "##fileformat=VCFv4.2"
   line2 = "##FORMAT=<ID=GT,Number=1,Type=Integer,Description=Genotype>"
-  line3 = paste("#CHROM	POS	ID	REF	ALT	QUAL	FILTER  INFO	FORMAT",
-                paste(samples, collapse = "\t"), collapse = "\t")
+  line3 = paste("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT",
+                paste(samples, collapse = "\t"), sep = "\t")
   
   line_gt = vector()
-  for(i in dim(dosage_called)[1]){
+  for(i in 1:dim(dosage_called)[1]){
     line_meta = paste(
       dosage_called[i,1], # Chromosome
       dosage_called[i,2], # Position
@@ -82,19 +85,24 @@ dosage_to_vcf = function(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
     line_x = paste(line_meta, 
                    paste(dosage_called[i,5:dim(dosage_called)[2]],
                          collapse = "\t"),
-                   collapse = "\t")
+                   sep = "\t")
     line_gt = c(line_gt, line_x)
   }
   
   writeLines(c(line1, line2, line3, line_gt),
              con = vcf_filename,
              sep = "\n")
+  if(gzip_compression){
+    gzip(vcf_filename)
+  }
   
 }
 
 ### NOT RUN
 # dosage_to_vcf(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
 #               sample_dir = "FHS_EA_TOPHIT_SNPs_subset.sample",
-#               vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf")
+#               vcf_filename = "FHS_EA_TOPHIT_SNPs_subset_unphased.vcf",
+#               gzip_compression = TRUE)
+# vcf = read.vcfR("FHS_EA_TOPHIT_SNPs_subset_unphased.vcf.gz")
 ```
 
