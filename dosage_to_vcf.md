@@ -164,16 +164,6 @@ vcf_to_haplotype = function(phased_vcf = "FHS_EA_TOPHIT_SNPs_subset_phased.vcf.g
   
 }
 
-# apply(all_haplotypes,2,sum)
-
-# In count
-# HAP_CGG HAP_CGC HAP_CAG HAP_CAC HAP_GGG HAP_GGC HAP_GAG HAP_GAC 
-#     281    6267     575    3502     147    2011     516    2565 
-
-# In fraction
-# HAP_CGG HAP_CGC HAP_CAG HAP_CAC HAP_GGG HAP_GGC HAP_GAG HAP_GAC 
-#    0.02    0.40    0.04    0.22    0.01    0.13    0.03    0.16
-
 ###NOT RUN
 # vcf_to_haplotype(phased_vcf = "FHS_EA_TOPHIT_SNPs_subset_phased.vcf.gz",
 #                  filename = "FHS_EA_TOPHIT_SNPs_subset_haplotype.csv")
