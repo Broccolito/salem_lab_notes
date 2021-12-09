@@ -106,3 +106,77 @@ dosage_to_vcf = function(dosage_dir = "FHS_EA_TOPHIT_SNPs_subset.dosage",
 # vcf = read.vcfR("FHS_EA_TOPHIT_SNPs_subset_unphased.vcf.gz")
 ```
 
+
+
+### Generate haplotype frequency from phased VCF files
+
+```R
+library(dplyr)
+library(vcfR)
+library(gtools)
+
+vcf_to_haplotype = function(phased_vcf = "FHS_EA_TOPHIT_SNPs_subset_phased.vcf.gz",
+                            filename = "FHS_EA_TOPHIT_SNPs_subset_haplotype.csv"){
+  
+  vcf = read.vcfR(phased_vcf)
+  
+  n_snps = dim(vcf@fix)[1]
+  possible_haplotypes = apply(permutations(n=2,r=n_snps,repeats.allowed=TRUE)-1,1,
+                              FUN = function(x){paste(x, collapse = "")})
+  
+  all_haplotypes = vector()
+  for(hap in possible_haplotypes){
+    gt_df = as.data.frame(vcf@gt[,-1])
+    haplotypes = vector()
+    for(gt in gt_df){
+      paternal = gt %>%
+        strsplit(split = "|") %>%
+        lapply(function(x){x[1]}) %>%
+        unlist() %>%
+        paste(collapse = "")
+      maternal = gt %>%
+        strsplit(split = "|") %>%
+        lapply(function(x){x[3]}) %>%
+        unlist() %>%
+        paste(collapse = "")
+      haplotype = sum(c(paternal==hap, maternal==hap))
+      haplotypes = c(haplotypes, haplotype)
+    }
+    all_haplotypes = rbind(all_haplotypes, haplotypes)
+  }
+  all_haplotypes = as.data.frame(t(all_haplotypes))
+  
+  to_nucleotide = function(allele = "000"){
+    allele = unlist(strsplit(allele, split = ""))
+    for(i in 1:length(allele)){
+      allele[i] = ifelse(allele[i]=="0",getREF(vcf)[i],
+                         ifelse(allele[i]=="1",
+                                getALT(vcf)[i],"."))
+    }
+    allele = paste(allele,collapse = "")
+    return(allele)
+  }
+  
+  names(all_haplotypes) = paste0("HAP_", sapply(possible_haplotypes, to_nucleotide))
+  all_haplotypes = cbind.data.frame(tibble(SUBJECT = colnames(vcf@gt)[-1]),
+                                    all_haplotypes)
+  write.csv(all_haplotypes, file = filename, quote = FALSE, row.names = FALSE)
+  
+}
+
+# apply(all_haplotypes,2,sum)
+
+# In count
+# HAP_CGG HAP_CGC HAP_CAG HAP_CAC HAP_GGG HAP_GGC HAP_GAG HAP_GAC 
+#     281    6267     575    3502     147    2011     516    2565 
+
+# In fraction
+# HAP_CGG HAP_CGC HAP_CAG HAP_CAC HAP_GGG HAP_GGC HAP_GAG HAP_GAC 
+#    0.02    0.40    0.04    0.22    0.01    0.13    0.03    0.16
+
+###NOT RUN
+# vcf_to_haplotype(phased_vcf = "FHS_EA_TOPHIT_SNPs_subset_phased.vcf.gz",
+#                  filename = "FHS_EA_TOPHIT_SNPs_subset_haplotype.csv")
+
+```
+
